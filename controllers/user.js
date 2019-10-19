@@ -45,7 +45,7 @@ class UserController {
     
                     return res.status(200).send(token);
                 } else {
-                    res.status(500).json({ message: 'Wrong password'})
+                    return res.status(500).json({ message: 'Wrong password'})
                 }
             } else {
                 return res.status(500).json({ message: 'Account does not exist'});
