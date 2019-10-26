@@ -1,16 +1,28 @@
 const userModel = require('../models/user');
 
 class UserAccessor {
-    getByEmail(email) {
+    findByEmail(email) {
         return userModel.findOne({ email: email });
     }
 
-    getById(id) {
+    findById(id) {
         return userModel.findById(id);
     }
 
-    insertUser(user) {
+    findAll(ids) {
+        return userModel.find({
+            _id: {
+                $in: ids
+            }
+        });
+    }
+
+    insert(user) {
         return userModel.create(user);
+    }
+
+    updateById(id, user) {
+        return userModel.findByIdAndUpdate(id, user, { new: true });
     }
 }
 
