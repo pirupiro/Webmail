@@ -58,7 +58,7 @@ class MessageController {
                 ccReceivers: req.body.ccReceivers,
                 bccReceivers: req.body.bccReceivers,
                 conversation: req.body.message.conversation,
-                replyTo: req.body.message,
+                replyTo: req.body.message._id,
                 files: req.body.files
             };
 
