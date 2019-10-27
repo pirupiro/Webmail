@@ -18,7 +18,9 @@ class UserAccessor {
     }
 
     findAll() {
-        return userModel.find();
+        return userModel.find({
+            isAdmin: false
+        });
     }
 
     insert(user) {

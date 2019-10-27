@@ -9,6 +9,7 @@ const mongoose = require('mongoose');
 const userRouter = require('./routers/user');
 const messRouter = require('./routers/message');
 const folderRouter = require('./routers/folder');
+const convRouter = require('../routers/conversation');
 
 // Assignments
 const mongoURI = 'mongodb://localhost:27017/webmail';
@@ -32,8 +33,9 @@ mongoose
 .catch(err => console.log(err));
 
 app.use('/users', userRouter);
-app.use('/messages', messRouter);
 app.use('/folders', folderRouter);
+app.use('/conversations', convRouter)
+app.use('/messages', messRouter);
 
 app.listen(port, () => {
     console.log('Listening on port ' + port + '...');

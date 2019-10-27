@@ -5,15 +5,26 @@ class MessageAccessor {
         return messageModel.create(message);
     }
 
+    find(msgId) {
+        return messageModel.findById(msgId);
+    }
+
+    delete(msgId) {
+        return messageModel.findByIdAndDelete(msgId);
+    }
+
+    deleteAllByIds(ids) {
+        return messageModel.deleteMany({
+            _id: {
+                $in: ids
+            }
+        });
+    }
+
     findLast(convId, userId) {
         return messageModel.find({
             conversation: convId,
-            $or: [
-                { sender: userId },
-                { receivers: userId },
-                { ccReceivers: userId },
-                { bccReceivers: userId }
-            ]
+            visibleBy: userId
         })
         .sort({
             sentAt: -1
@@ -21,9 +32,28 @@ class MessageAccessor {
         .limit(1);
     }
 
-    findAllById(convId) {
+    findAll(convId, userId) {
         return messageModel.find({
-            conversation: convId
+            conversation: convId,
+            visibleBy: userId,
+        });
+    }
+
+    findAllNotDeleted(convId, userId) {
+        return messageModel.find({
+            conversation: convId,
+            visibleBy: userId,
+            deletedBy: {
+                $not: userId
+            }
+        });
+    }
+    
+    findAllDeleted(convId, userId) {
+        return messageModel.find({
+            conversation: convId,
+            visibleBy: userId,
+            deletedBy: userId
         });
     }
 }

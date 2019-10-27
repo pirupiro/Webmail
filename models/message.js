@@ -9,6 +9,7 @@ const messageSchema = new mongoose.Schema({
     ccReceivers: [ObjectId],
     bccReceivers: [ObjectId],
     conversation: ObjectId,
+    visibleBy: [ObjectId],
     readBy: [ObjectId],
     deletedBy: [ObjectId],
     replyTo: ObjectId,

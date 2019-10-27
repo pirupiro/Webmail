@@ -8,7 +8,11 @@ class FolderAccessor {
         })
     }
 
-    find(userId, name) {
+    find(folderId) {
+        return folderModel.findById(folderId);
+    }
+
+    findByName(userId, name) {
         return folderModel.findOne({
             user: userId,
             name: name
@@ -16,26 +20,26 @@ class FolderAccessor {
     }
     
     findInbox(userId) {
-        return this.find(userId, 'Inbox');
+        return this.findByName(userId, 'Inbox');
     }
 
     findSent(userId) {
-        return this.find(userId, 'Sent');
+        return this.findByName(userId, 'Sent');
     }
 
     findDrafts(userId) {
-        return this.find(userId, 'Drafts');
+        return this.findByName(userId, 'Drafts');
     }
 
     findSpam(userId) {
-        return this.find(userId, 'Spam');
+        return this.findByName(userId, 'Spam');
     }
 
     findTrash(userId) {
-        return this.find(userId, 'Trash');
+        return this.findByName(userId, 'Trash');
     }
 
-    findAll(userIds, name) {
+    findAllByName(userIds, name) {
         return folderModel.find({
             user: {
                 $in: userIds
@@ -45,11 +49,17 @@ class FolderAccessor {
     }
 
     findAllInbox(userIds) {
-        return this.findAll(userIds, 'Inbox');
+        return this.findAllByName(userIds, 'Inbox');
     }
 
     delete(folderId) {
         return folderModel.findByIdAndDelete(folderId);
+    }
+
+    findAllByUserId(userId) {
+        return folderModel.find({
+            user: userId
+        });
     }
 }
 

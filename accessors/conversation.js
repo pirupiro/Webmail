@@ -5,16 +5,32 @@ class ConversationAccessor {
         return convModel.create(conversation);
     }
 
-    find(folderId) {
+    delete(convId) {
+        return convModel.findByIdAndDelete(convId);
+    }
+
+    find(convId) {
+        return convModel.findById(convId);
+    }
+
+    findByFolderId(folderId) {
         return convModel.findOne({
             folders: folderId
         });
     }
 
-    findAll(folderId) {
+    findAllByFolderId(folderId) {
         return convModel.find({
             folders: folderId
         });
+    }
+
+    findAllByIds(ids) {
+        return convModel.find({
+            _id: {
+                $in: ids
+            }
+        })
     }
 }
 
