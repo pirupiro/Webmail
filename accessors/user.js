@@ -9,12 +9,16 @@ class UserAccessor {
         return userModel.findById(id);
     }
 
-    findAll(ids) {
+    findAllByIds(ids) {
         return userModel.find({
             _id: {
                 $in: ids
             }
         });
+    }
+
+    findAll() {
+        return userModel.find();
     }
 
     insert(user) {
@@ -23,6 +27,10 @@ class UserAccessor {
 
     updateById(id, user) {
         return userModel.findByIdAndUpdate(id, user, { new: true });
+    }
+
+    block(id) {
+        return userModel.findByIdAndUpdate(id, { isBlocked: !isBlocked });
     }
 }
 

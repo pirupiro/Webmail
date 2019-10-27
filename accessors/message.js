@@ -21,7 +21,7 @@ class MessageAccessor {
         .limit(1);
     }
 
-    findAll(convId) {
+    findAllById(convId) {
         return messageModel.find({
             conversation: convId
         });

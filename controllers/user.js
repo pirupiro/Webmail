@@ -85,7 +85,10 @@ class UserController {
                         data: null
                     });
                 } else if (bcrypt.compareSync(req.body.password, user.password)) {
-                    const payload = { _id: user._id };
+                    const payload = {
+                        _id: user._id,
+                        isAdmin: user.isAdmin
+                    };
 
                     let token = jwt.sign(payload, process.env.SECRET_KEY, {
                         expiresIn: 1800
@@ -123,7 +126,7 @@ class UserController {
         try {
             let decoded = jwt.verify(req.headers['authorization'], process.env.SECRET_KEY);
             let user = await userAccessor.findById(decoded._id);
-            let subset = ({ name, birthday, gender, phone }) => ({ name, birthday, gender, phone });
+            let subset = ({ email, name, birthday, gender, phone }) => ({ email, name, birthday, gender, phone });
 
             if (user)
                 return res.status(200).json({
@@ -149,6 +152,7 @@ class UserController {
     async changeProfile(req, res, next) {
         try {
             let decoded = jwt.verify(req.headers['authorization'], process.env.SECRET_KEY);
+
             let userData = {
                 name: req.body.name,
                 birthday: req.body.birthday,
@@ -156,8 +160,12 @@ class UserController {
                 phone: req.body.phone
             };
 
+            if (req.body.changePassword) {
+                userData.password = req.body.newPassword;
+            }
+
             let user = await userAccessor.updateById(decoded._id, userData);
-            let subset = ({name, birthday, gender, phone}) => ({name, birthday, gender, phone});
+            let subset = ({ email, password, name, birthday, gender, phone}) => ({ email, password, name, birthday, gender, phone });
 
             if (user)
                 return res.status(200).json({
@@ -184,6 +192,86 @@ class UserController {
     /*
     *   Admin Region
     */
+    async findAllUser() {
+        try {
+            let decoded = jwt.verify(req.headers['authorization'], process.env.SECRET_KEY);
+            
+            if (decoded.isAdmin) {
+                let users = await userAccessor.findAll();
+                return res.status(200).json({
+                    error: false,
+                    message: null,
+                    data: users
+                });
+            } else {
+                return res.status(401).json({
+                    error: true,
+                    message: 'You are not authorized to view this information',
+                    data: null
+                });
+            }
+        } catch (err) {
+            return res.status(500).json({
+                error: true,
+                message: err.message,
+                data: null
+            }); 
+        }
+    }
+
+    async viewUserProfile() {
+        try {
+            let decoded = jwt.verify(req.headers['authorization'], process.env.SECRET_KEY);
+            
+            if (decoded.isAdmin) {
+                let user = await userAccessor.findById(req.params.id);
+                return res.status(200).json({
+                    error: false,
+                    message: null,
+                    data: user
+                })
+            } else {
+                return res.status(401).json({
+                    error: true,
+                    message: 'You are not authorized to view this information',
+                    data: null
+                });
+            }
+        } catch (err) {
+            return res.status(500).json({
+                error: true,
+                message: err.message,
+                data: null
+            }); 
+        }
+    }
+
+    async blockUser() {
+        try {
+            let decoded = jwt.verify(req.headers['authorization'], process.env.SECRET_KEY);
+
+            if (decoded.isAdmin) {
+                userAccessor.block(req.params.id);
+                return res.status(200).json({
+                    error: false,
+                    message: null,
+                    data: null
+                });
+            } else {
+                return res.status(401).json({
+                    error: true,
+                    message: 'You are not authorized to do this',
+                    data: null
+                });
+            }
+        } catch (err) {
+            return res.status(500).json({
+                error: true,
+                message: err.message,
+                data: null
+            }); 
+        }
+    }
 }
 
 module.exports = new UserController();

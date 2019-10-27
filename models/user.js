@@ -1,5 +1,4 @@
 const mongoose = require('mongoose');
-const ObjectId = mongoose.Schema.Types.ObjectId;
 
 const userSchema = new mongoose.Schema({
     email: {
@@ -24,6 +23,7 @@ const userSchema = new mongoose.Schema({
         default: Date.now
     },
     isBlocked: Boolean,
+    isAdmin: Boolean
 });
 
 module.exports = mongoose.model('User', userSchema);

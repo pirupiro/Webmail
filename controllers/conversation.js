@@ -5,7 +5,7 @@ const messAccessor = require('../accessors/message');
 class ConversationController {
     async findAllMessages() {
         try {
-            let messages = await messAccessor.findAll(req.params.id);
+            let messages = await messAccessor.findAllById(req.params.id);
             return res.status(200).json({
                 error: false,
                 message: null,
