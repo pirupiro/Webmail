@@ -2,13 +2,13 @@ const express = require('express');
 const folderController = require('../controllers/folder');
 const folderRouter = express.Router();
 
-folderRouter.get('/inbox', folderController.findAllInboxConversations);
-folderRouter.get('/sent', folderController.findAllSentConversations);
-folderRouter.get('/trash', folderController.findAllTrashConversations);
-folderRouter.get('/drafts', folderController.findAllDraftsMessages);
-folderRouter.get('/spam', folderController.findAllSpamMessages);
-folderRouter.get('/:name', folderController.findAllDefinedFolderConversations);
-folderRouter.post('/:name', folderController.createFolder);
-folderRouter.delete('/:name', folderController.deleteFolder);
+folderRouter.get('/inbox', folderController.findAllConversations);
+folderRouter.get('/sent', folderController.findAllConversations);
+folderRouter.get('/trash', folderController.findAllConversations);
+folderRouter.get('/drafts', folderController.findAllMessages);
+folderRouter.get('/spam', folderController.findAllMessages);
+folderRouter.get('/defined', folderController.findAllConversations);
+folderRouter.post('/', folderController.createFolder);
+folderRouter.delete('/', folderController.deleteFolder);
 
 module.exports = folderRouter;

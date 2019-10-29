@@ -17,6 +17,14 @@ class UserAccessor {
         });
     }
 
+    findAllByEmails(emails) {
+        return userModel.find({
+            email: {
+                $in: emails
+            }
+        });
+    }
+
     findAll() {
         return userModel.find({
             isAdmin: false
@@ -27,12 +35,21 @@ class UserAccessor {
         return userModel.create(user);
     }
 
-    updateById(id, user) {
-        return userModel.findByIdAndUpdate(id, user, { new: true });
+    updateByEmail(email, user) {
+        // return userModel.findByIdAndUpdate(id, user, { new: true });
+        return userModel.updateOne({
+            email: email
+        }, user, {
+            new: true
+        });
     }
 
-    block(id) {
-        return userModel.findByIdAndUpdate(id, { isBlocked: !isBlocked });
+    block(email) {
+        return userModel.updateOne({
+            email: email
+        }, {
+            isBlocked: !isBlocked
+        });
     }
 }
 

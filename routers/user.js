@@ -7,7 +7,6 @@ userRouter.post('/login', userController.login);
 userRouter.get('/profile', userController.viewProfile);
 userRouter.post('/profile', userController.changeProfile);
 userRouter.get('/', userController.findAllUsers);
-userRouter.get('/:id', userController.viewUserProfile);
-userRouter.put('/block/:id', userController.blockUser);
+userRouter.put('/block', userController.blockOrUnblockUser);
 
 module.exports = userRouter;

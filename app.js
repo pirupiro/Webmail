@@ -7,9 +7,9 @@ const mongoose = require('mongoose');
 
 // Routers
 const userRouter = require('./routers/user');
-const messRouter = require('./routers/message');
 const folderRouter = require('./routers/folder');
 const convRouter = require('../routers/conversation');
+const messRouter = require('./routers/message');
 
 // Assignments
 const mongoURI = 'mongodb://localhost:27017/webmail';

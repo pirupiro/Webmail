@@ -13,18 +13,18 @@ class MessageAccessor {
         return messageModel.findByIdAndDelete(msgId);
     }
 
-    deleteAllByIds(ids) {
+    deleteAllByIds(msgIds) {
         return messageModel.deleteMany({
             _id: {
-                $in: ids
+                $in: msgIds
             }
         });
     }
 
-    findLast(convId, userId) {
+    findLast(convId, userEmail) {
         return messageModel.find({
             conversation: convId,
-            visibleBy: userId
+            visibleBy: userEmail
         })
         .sort({
             sentAt: -1
@@ -32,28 +32,28 @@ class MessageAccessor {
         .limit(1);
     }
 
-    findAll(convId, userId) {
+    findAll(convId, userEmail) {
         return messageModel.find({
             conversation: convId,
-            visibleBy: userId,
+            visibleBy: userEmail,
         });
     }
 
-    findAllNotDeleted(convId, userId) {
+    findAllNotDeleted(convId, userEmail) {
         return messageModel.find({
             conversation: convId,
-            visibleBy: userId,
+            visibleBy: userEmail,
             deletedBy: {
-                $not: userId
+                $not: userEmail
             }
         });
     }
     
-    findAllDeleted(convId, userId) {
+    findAllDeleted(convId, userEmail) {
         return messageModel.find({
             conversation: convId,
-            visibleBy: userId,
-            deletedBy: userId
+            visibleBy: userEmail,
+            deletedBy: userEmail
         });
     }
 }

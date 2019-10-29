@@ -25,10 +25,10 @@ class ConversationAccessor {
         });
     }
 
-    findAllByIds(ids) {
+    findAllByIds(convIds) {
         return convModel.find({
             _id: {
-                $in: ids
+                $in: convIds
             }
         })
     }

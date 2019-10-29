@@ -1,16 +1,24 @@
 const jwt = require('jsonwebtoken');
+const userAccessor = require('../accessors/user');
 const folderAccessor = require('../accessors/folder');
 const convAccessor = require('../accessors/conversation');
 const messAccessor = require('../accessors/message');
 
+Array.prototype.diff = function(list) {
+    return this.filter(function(item) {
+        return list.indexOf(item) < 0;
+    });
+};
+
 class MessageController {
     async send(req, res, next) {
         try {
-            let decoded = jwt.verify(req.headers['authorization'], process.env.SECRET_KEY);
-            let sentFolder = await folderAccessor.findSent(decoded._id);
-            let receivers = req.body.receivers.concat(req.body.ccReceivers).concat(req.body.bccReceivers);
-            let inboxFolders = await folderAccessor.findAllInbox(receivers);
-            let folders = inboxFolders.concat(sentFolder);
+            let user = jwt.verify(req.headers['authorization'], process.env.SECRET_KEY);
+            let allReceiverEmails = req.body.receiverEmails.concat(req.body.ccReceiverEmails).concat(req.body.bccReceiverEmails);
+            let allReceivers = await userAccessor.findAllByEmails(allReceiverEmails);
+            let allReceiverIds = allReceivers.map(receiver => receiver._id);
+            let inboxFolders = await folderAccessor.findAllInbox(allReceiverIds);
+            let folders = inboxFolders.concat(req.body.sentFolderId);
             let folderIds = folders.map(folder => folder._id);
             const convData = {
                 folders: folderIds
@@ -20,17 +28,18 @@ class MessageController {
             const messageData = {
                 title: req.body.title,
                 content: req.body.content,
-                sender: decoded._id,
-                receivers: req.body.receivers,
-                ccReceivers: req.body.ccReceivers,
-                bccReceivers: req.body.bccReceivers,
+                sender: user.email,
+                receivers: req.body.receiverEmails,
+                ccReceivers: req.body.ccReceiverEmails,
+                bccReceivers: req.body.bccReceiverEmails,
+                visibleBy: allReceiverEmails.concat(user.email),
+                readBy: [user.email],
                 conversation: conversation._id,
-                visibleBy: receivers.concat(decoded._id),
-                readBy: [decoded._id],
                 files: req.body.files
             };
 
             let message = await messAccessor.insert(messageData);
+            
             return res.status(200).json({
                 error: false,
                 message: 'Send message successfully',
@@ -47,23 +56,37 @@ class MessageController {
 
     async reply(req, res, next) {
         try {
-            let decoded = jwt.verify(req.headers['authorization'], process.env.SECRET_KEY);
-            let receivers = req.body.receivers.concat(req.body.ccReceivers).concat(req.body.bccReceivers);
+            let user = jwt.verify(req.headers['authorization'], process.env.SECRET_KEY);
+            let allReceiverEmails = req.body.receiverEmails.concat(req.body.ccReceiverEmails).concat(req.body.bccReceiverEmails);
 
-            const messageData = {
+            const replyingMessage = {
                 title: req.body.title,
                 content: req.body.content,
-                sender: decoded._id,
-                receivers: req.body.receivers,
-                ccReceivers: req.body.ccReceivers,
-                bccReceivers: req.body.bccReceivers,
-                conversation: req.body.conversation,  // Conversation id of the replied message
-                visibleBy: receivers.concat(decoded._id),
-                replyTo: req.body.id,  // Id of the replied message
+                sender: user.email,
+                receivers: req.body.receiverEmails,
+                ccReceivers: req.body.ccReceiverEmails,
+                bccReceivers: req.body.bccReceiverEmails,
+                conversation: req.body.convId,  // Conversation id of the replied message
+                visibleBy: allReceiverEmails.concat(user.email),
+                replyTo: req.body.msgId,  // Id of the replied message
                 files: req.body.files
             };
 
-            messAccessor.insert(messageData);
+            let repliedMessageVisibleBy = req.body.visibleBy;
+            let newReceiverEmails = replyingMessage.visibleBy.diff(repliedMessageVisibleBy);
+
+            if (newReceiverEmails.length > 0) {
+                let newReceivers = await userAccessor.findAllByEmails(newReceiverEmails);
+                let newReceiverIds = newReceivers.map(receiver => receiver._id);
+                let inboxFolders = await folderAccessor.findAllInbox(newReceiverIds);
+                let inboxFolderIds = inboxFolders.map(folder => folder._id);
+                let conversation = await convAccessor.find(req.body.convId);
+                conversation.folders.concat(inboxFolderIds);
+                await conversation.save();
+            }
+
+            await messAccessor.insert(replyingMessage);
+
             return res.status(200).json({
                 error: false,
                 message: null,
@@ -80,24 +103,25 @@ class MessageController {
 
     async saveToDrafts(req, res, next) {
         try {
-            let decoded = jwt.verify(req.headers['authorization'], process.env.SECRET_KEY);
-            let drafts = await folderAccessor.findDrafts(decoded._id);
+            let user = jwt.verify(req.headers['authorization'], process.env.SECRET_KEY);
+            let drafts = await folderAccessor.findDrafts(user._id);
             let conversation = await convAccessor.findByFolderId(drafts._id);
 
             const messageData = {
                 title: req.body.title,
                 content: req.body.content,
-                sender: decoded._id,
-                receivers: req.body.receivers,
-                ccReceivers: req.body.ccReceivers,
-                bccReceivers: req.body.bccReceivers,
+                sender: user.email,
+                receivers: req.body.receiverEmails,
+                ccReceivers: req.body.ccReceiverEmails,
+                bccReceivers: req.body.bccReceiverEmails,
                 conversation: conversation._id,
-                visibleBy: [decoded._id],
+                visibleBy: [user.email],
                 files: req.body.files,
                 sentAt: null
             };
 
-            messAccessor.create(messageData);
+            await messAccessor.create(messageData);
+            
             return res.status(200).json({
                 error: false,
                 message: null,
@@ -114,28 +138,28 @@ class MessageController {
 
     async delete(req, res, next) {
         try {
-            let decoded = jwt.verify(req.headers['authorization'], process.env.SECRET_KEY);
-            let message = await messAccessor.find(req.params.msgId);
+            let user = jwt.verify(req.headers['authorization'], process.env.SECRET_KEY);
+            let message = await messAccessor.find(req.body.msgId);
             let conversation = await convAccessor.find(message.conversation);
-            let messages = await messAccessor.findAllNotDeleted(conversation._id, decoded._id);
-            let trashFolder = await folderAccessor.findTrash(decoded._id);
+            let messages = await messAccessor.findAllNotDeleted(conversation._id, user.email);
+            let trashFolder = await folderAccessor.findTrash(user._id);
 
             if (!conversation.folderds.includes(trashFolder._id)) {
                 conversation.folders.push(trashFolder._id);
             }
 
             if (messages.length == 1) {
-                let folder = await folderAccessor.find(req.params.folderId);
+                let folder = await folderAccessor.find(req.body.currentFolderId);
 
                 if (folder.name != 'Drafts' && folder.name != 'Spam') {
-                    let index = conversation.folders.indexOf(req.params.folderId);
+                    let index = conversation.folders.indexOf(folder._id);
                     conversation.folders.splice(index, 1);
-                    conversation.save();
-                } 
+                    await conversation.save();
+                }
             }
 
-            message.deletedBy.push(decoded._id);
-            message.save();
+            message.deletedBy.push(user.email);
+            await message.save();
 
             return res.status(200).json({
                 error: false,
@@ -153,26 +177,33 @@ class MessageController {
 
     async deletePermanently(req, res, next) {
         try {
-            let decoded = jwt.verify(req.headers['authorization'], process.env.SECRET_KEY);
-            let message = await messAccessor.find(req.params.msgId);
+            let user = jwt.verify(req.headers['authorization'], process.env.SECRET_KEY);
+            let message = await messAccessor.find(req.body.msgId);
             let conversation = await convAccessor.find(message.conversation);
-            let messages = await messAccessor.findAllDeleted(conversation._id, decoded._id);
+            let messages = await messAccessor.findAllDeleted(conversation._id, user.email);
 
             if (messages.length == 1) {
+                // This happens because the deleted message is the last message in the conversation
                 if (conversation.folders.length > 1) {
-                    let index = conversation.folders.indexOf(req.params.folderId);
+                    // Remove the reference from conversation to trash folder of user
+                    // Because this conversation still refers to other folders
+                    let index = conversation.folders.indexOf(req.body.trashFolderId);
                     conversation.splice(index, 1);
-                    conversation.save();
+                    await conversation.save();
                 } else {
-                    convAccessor.delete(conversation._id);
+                    // Delete conversation permanently because there is no reference left
+                    await convAccessor.delete(conversation._id);
                 }
             }
 
-            let index = message.visibleBy.indexOf(decoded._id);
+            // Remove user from the visibleBy list of this message
+            // So that this user can no longer see this message
+            let index = message.visibleBy.indexOf(user.email);
             message.visibleBy.splice(index, 1);
             
             if (message.visibleBy.length == 0) {
-                messAccessor.delete(message._id);
+                // If the message can't be visible from anyone, it should de deleted
+                await messAccessor.delete(message._id);
             }
             
             return res.status(200).json({
@@ -189,12 +220,19 @@ class MessageController {
         }
     }
 
-    async markRead(req, res, next) {
+    async markReadOrUnread(req, res, next) {
         try {
-            let decoded = jwt.verify(req.headers['authorization'], process.env.SECRET_KEY);
-            let message = messAccessor.find(req.params.id);
-            message.readBy.push(decoded._id);
-            message.save();
+            let user = jwt.verify(req.headers['authorization'], process.env.SECRET_KEY);
+            let message = messAccessor.find(req.body.msgId);
+            let index = message.readBy.indexOf(user.email);
+
+            if (index < 0) {
+                message.readBy.push(user.email);
+            } else {
+                message.readBy.splice(index, 1);
+            }
+
+            await message.save();
             
             return res.status(200).json({
                 error: false,
@@ -210,13 +248,15 @@ class MessageController {
         }
     }
 
-    async markUnread(req, res, next) {
+    async unmarkSpam(req, res, next) {
         try {
-            let decoded = jwt.verify(req.headers['authorization'], process.env.SECRET_KEY);
-            let message = messAccessor.find(req.params.id);
-            let index = message.readBy.indexOf(decoded._id);
-            message.readBy.splice(index, 1);
-            message.save();
+            let user  = jwt.verify(req.headers['authorization'], process.env.SECRET_KEY);
+            let message = await messAccessor.find(req.body.msgId);
+            let inboxFolder = await folderAccessor.findInbox(user._id);
+            let conversation = await convAccessor.find(message.conversation);
+            let index = conversation.folders.indexOf(req.body.convId);
+            conversation.folders[index] = inboxFolder._id;
+            await conversation.save();
             
             return res.status(200).json({
                 error: false,
@@ -230,7 +270,7 @@ class MessageController {
                 data: null
             });
         }
-    }
+    } 
 }
 
 module.exports = new MessageController();
