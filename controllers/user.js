@@ -26,11 +26,11 @@ class UserController {
                 let encrypted = await bcrypt.hash(userData.password, 10);
                 userData.password = encrypted;
                 let user = await userAccessor.insert(userData);
-                folderAccessor.insert(user._id, 'Inbox');
-                folderAccessor.insert(user._id, 'Sent');
-                folderAccessor.insert(user._id, 'Trash');
-                drafts = await folderAccessor.insert(user._id, 'Drafts');
-                spam = await folderAccessor.insert(user._id, 'Spam');
+                await folderAccessor.insert(user._id, 'Inbox');
+                await folderAccessor.insert(user._id, 'Sent');
+                await folderAccessor.insert(user._id, 'Trash');
+                let drafts = await folderAccessor.insert(user._id, 'Drafts');
+                let spam = await folderAccessor.insert(user._id, 'Spam');
 
                 const draftsConv = {
                     folders: [drafts._id]
@@ -49,7 +49,7 @@ class UserController {
                     data: null
                 });
             } else {
-                return res.status(500).json({
+                return res.status(400).json({
                     error: true,
                     message: 'Account has already existed',
                     data: null
