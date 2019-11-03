@@ -8,7 +8,7 @@ const mongoose = require('mongoose');
 // Routers
 const userRouter = require('./routers/user');
 const folderRouter = require('./routers/folder');
-const convRouter = require('../routers/conversation');
+const convRouter = require('./routers/conversation');
 const messRouter = require('./routers/message');
 
 // Assignments

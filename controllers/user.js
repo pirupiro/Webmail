@@ -171,14 +171,14 @@ class UserController {
                 }
             }
 
-            let user = await userAccessor.updateByEmail(user.email, userData);
+            let updatedUser = await userAccessor.updateByEmail(user.email, userData);
             let subset = ({ password, name, birthday, gender, phone}) => ({ password, name, birthday, gender, phone });
 
-            if (user) {
+            if (updatedUser) {
                 return res.status(200).json({
                     error: false,
                     message: 'Profile changed successfully',
-                    data: subset(user)
+                    data: subset(updatedUser)
                 });
             } else {
                 return res.status(500).json({
