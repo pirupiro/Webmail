@@ -4,17 +4,19 @@ const folderAccessor = require('../accessors/folder');
 const convAccessor = require('../accessors/conversation');
 const messAccessor = require('../accessors/message');
 
-Array.prototype.diff = function(list) {
-    return this.filter(function(item) {
-        return list.indexOf(item) < 0;
-    });
-};
+// Array.prototype.diff = function(list) {
+//     return this.filter(function(item) {
+//         return !list.includes(item) < 0;
+//     });
+// };
 
 class MessageController {
     async send(req, res, next) {
         try {
             let user = jwt.verify(req.headers['authorization'], process.env.SECRET_KEY);
-            let allReceiverEmails = req.body.receiverEmails.concat(req.body.ccReceiverEmails).concat(req.body.bccReceiverEmails);
+            let allReceiverEmails = req.body.receiverEmails
+                                    .concat(req.body.ccReceiverEmails)
+                                    .concat(req.body.bccReceiverEmails);
             let allReceivers = await userAccessor.findAllByEmails(allReceiverEmails);
             let allReceiverIds = allReceivers.map(receiver => receiver._id);
             let inboxFolders = await folderAccessor.findAllInbox(allReceiverIds);
@@ -72,19 +74,11 @@ class MessageController {
                 files: req.body.files
             };
 
-            let repliedMessageVisibleBy = req.body.visibleBy;
-            let newReceiverEmails = replyingMessage.visibleBy.diff(repliedMessageVisibleBy);
-
-            if (newReceiverEmails.length > 0) {
-                let newReceivers = await userAccessor.findAllByEmails(newReceiverEmails);
-                let newReceiverIds = newReceivers.map(receiver => receiver._id);
-                let inboxFolders = await folderAccessor.findAllInbox(newReceiverIds);
-                let inboxFolderIds = inboxFolders.map(folder => folder._id);
-                let conversation = await convAccessor.find(req.body.convId);
-                conversation.folders.concat(inboxFolderIds);
-                await conversation.save();
-            }
-
+            let inboxFolders = await folderAccessor.findAllByEmails(allReceiverEmails);
+            let conversation = await convAccessor.find(req.body.convId);
+            let inboxFolderIds = inboxFolders.map(folder => folder._id);
+            conversation.folders = Array.from(new Set(conversation.folders.concat(inboxFolderIds)));
+            await conversation.save();
             await messAccessor.insert(replyingMessage);
 
             return res.status(200).json({
