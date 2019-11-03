@@ -17,6 +17,7 @@ class UserController {
                 birthday: req.body.birthday,
                 gender: req.body.gender,
                 phone: req.body.phone,
+                isAdmin: req.body.isAdmin
             };
             
             let queryUser = await userAccessor.findByEmail(userData.email);
@@ -26,22 +27,27 @@ class UserController {
                 let encrypted = await bcrypt.hash(userData.password, 10);
                 userData.password = encrypted;
                 let user = await userAccessor.insert(userData);
-                await folderAccessor.insert(user._id, 'Inbox');
-                await folderAccessor.insert(user._id, 'Sent');
-                await folderAccessor.insert(user._id, 'Trash');
-                let drafts = await folderAccessor.insert(user._id, 'Drafts');
-                let spam = await folderAccessor.insert(user._id, 'Spam');
+                
+                let folders = await Promise.all([
+                    folderAccessor.insert(user._id, 'Inbox'),
+                    folderAccessor.insert(user._id, 'Sent'),
+                    folderAccessor.insert(user._id, 'Trash'),
+                    folderAccessor.insert(user._id, 'Drafts'),
+                    folderAccessor.insert(user._id, 'Spam')
+                ]);
 
                 const draftsConv = {
-                    folders: [drafts._id]
+                    folders: [folders[3]._id]  // Drafts folder
                 };
 
                 const spamConv = {
-                    folders: [spam._id]
+                    folders: [folders[4]._id]  // Spam folder
                 };
 
-                await convAccessor.insert(draftsConv);
-                await convAccessor.insert(spamConv);
+                await Promise.all([
+                    convAccessor.insert(draftsConv),
+                    convAccessor.insert(spamConv)
+                ]);
 
                 return res.status(200).json({
                     error: false,
@@ -98,14 +104,14 @@ class UserController {
                         }
                     });
                 } else {
-                    return res.status(500).json({
+                    return res.status(400).json({
                         error: true,
                         message: 'Wrong password',
                         data: null
                     });
                 }
             } else {
-                return res.status(500).json({
+                return res.status(400).json({
                     error: true,
                     message: 'Account does not exist',
                     data: null
@@ -133,7 +139,7 @@ class UserController {
                     data: subset(userInfo)
                 });
             } else {
-                return res.status(500).json({
+                return res.status(400).json({
                     error: true,
                     message: 'Account does not exist',
                     data: null
@@ -174,19 +180,11 @@ class UserController {
             let updatedUser = await userAccessor.updateByEmail(user.email, userData);
             let subset = ({ password, name, birthday, gender, phone}) => ({ password, name, birthday, gender, phone });
 
-            if (updatedUser) {
-                return res.status(200).json({
-                    error: false,
-                    message: 'Profile changed successfully',
-                    data: subset(updatedUser)
-                });
-            } else {
-                return res.status(500).json({
-                    error: true,
-                    message: 'Update failed',
-                    data: null
-                });
-            }
+            return res.status(200).json({
+                error: false,
+                message: 'Profile changed successfully',
+                data: subset(updatedUser)
+            });
         }
         catch (err) {
             return res.status(500).json({
@@ -228,7 +226,7 @@ class UserController {
         }
     }
 
-    async blockOrUnblockUser(req, res, next) {
+    async blockUser(req, res, next) {
         try {
             let user = jwt.verify(req.headers['authorization'], process.env.SECRET_KEY);
 
@@ -237,7 +235,35 @@ class UserController {
 
                 return res.status(200).json({
                     error: false,
-                    message: null,
+                    message: 'User blocked successfully',
+                    data: null
+                });
+            } else {
+                return res.status(401).json({
+                    error: true,
+                    message: 'You are not authorized to do this',
+                    data: null
+                });
+            }
+        } catch (err) {
+            return res.status(500).json({
+                error: true,
+                message: err.message,
+                data: null
+            }); 
+        }
+    }
+
+    async unblockUser(req, res, next) {
+        try {
+            let user = jwt.verify(req.headers['authorization'], process.env.SECRET_KEY);
+
+            if (user.isAdmin) {
+                await userAccessor.unblock(req.body.email);
+
+                return res.status(200).json({
+                    error: false,
+                    message: 'User unblocked successfully',
                     data: null
                 });
             } else {

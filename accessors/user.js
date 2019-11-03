@@ -48,7 +48,15 @@ class UserAccessor {
         return userModel.updateOne({
             email: email
         }, {
-            isBlocked: !isBlocked
+            isBlocked: true
+        });
+    }
+
+    unblock(email) {
+        return userModel.updateOne({
+            email: email
+        }, {
+            isBlocked: false
         });
     }
 }
