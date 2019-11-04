@@ -12,49 +12,29 @@ class FolderController {
             let lastMessages = [];
 
             for (let i = 0; i < convs.length; i++) {
-                // Find all messages stored in convs[i] and visible by user
+                // Find all last messages stored in each conversation and visible by user
                 lastMessages.push(messAccessor.findLast(convs[i]._id, user.email));
             }
 
-            Promise
-            .all(lastMessages)
-            .then(values => {
-                let lastMessages = [];
+            let messages = await Promise.all(lastMessages);
+            let senderIds = messages.map(message => message[0].sender);
+            let senders = await userAccessor.findAllByIds(senderIds);
+            let data = [];
 
-                for (let i = 0; i < values.length; i++) {
-                    lastMessages = lastMessages.concat(values[i]);
-                }
-
-                let senderIds = lastMessages.map(message => message.sender);
-
-                userAccessor
-                .findAllByIds(senderIds)
-                .then(senders => {
-                    let data = [];
-
-                    for (let i = 0; i < lastMessages.length; i++) {
-                        data.push({
-                            convId: convs[i]._id,
-                            title: lastMessages[i].title,
-                            content: lastMessages[i].content,
-                            sender: senders[i].name,
-                            sentAt: lastMessages[i].sentAt
-                        });
-                    }
-
-                    return res.status(200).json({
-                        error: false,
-                        message: null,
-                        data: data
-                    });
+            for (let i = 0; i < lastMessages.length; i++) {
+                data.push({
+                    convId: convs[i]._id,
+                    title: lastMessages[i].title,
+                    content: lastMessages[i].content,
+                    sender: senders[i].name,
+                    sentAt: lastMessages[i].sentAt
                 });
-            })
-            .catch(err => {
-                return res.status(500).json({
-                    error: true,
-                    message: err.message,
-                    data: null
-                });
+            }
+
+            return res.status(200).json({
+                error: false,
+                message: null,
+                data: data
             });
         } catch (err) {
             return res.status(500).json({
