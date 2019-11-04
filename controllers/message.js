@@ -4,12 +4,6 @@ const folderAccessor = require('../accessors/folder');
 const convAccessor = require('../accessors/conversation');
 const messAccessor = require('../accessors/message');
 
-// Array.prototype.diff = function(list) {
-//     return this.filter(function(item) {
-//         return !list.includes(item) < 0;
-//     });
-// };
-
 class MessageController {
     async send(req, res, next) {
         try {
@@ -44,7 +38,7 @@ class MessageController {
             
             return res.status(200).json({
                 error: false,
-                message: 'Send message successfully',
+                message: null,
                 data: message
             });
         } catch (err) {
@@ -214,18 +208,33 @@ class MessageController {
         }
     }
 
-    async markReadOrUnread(req, res, next) {
+    async markRead(req, res, next) {
         try {
             let user = jwt.verify(req.headers['authorization'], process.env.SECRET_KEY);
-            let message = messAccessor.find(req.body.msgId);
+            let message = await messAccessor.find(req.body.msgId);
+            message.readBy.push(user.email);
+            await message.save();
+            
+            return res.status(200).json({
+                error: false,
+                message: null,
+                data: null
+            }) ;
+        } catch (err) {
+            return res.status(500).json({
+                error: true,
+                message: err.message,
+                data: null
+            });
+        }
+    }
+
+    async markUnread(req, res, next) {
+        try {
+            let user = jwt.verify(req.headers['authorization'], process.env.SECRET_KEY);
+            let message = await messAccessor.find(req.body.msgId);
             let index = message.readBy.indexOf(user.email);
-
-            if (index < 0) {
-                message.readBy.push(user.email);
-            } else {
-                message.readBy.splice(index, 1);
-            }
-
+            message.readBy.splice(index, 1);
             await message.save();
             
             return res.status(200).json({
