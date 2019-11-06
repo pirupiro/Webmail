@@ -13,6 +13,12 @@ Array.prototype.diff = function(array) {
     });
 };
 
+Array.prototype.has = function(item) {
+    return this.some(element => {
+        return item.equals(element);
+    });
+};
+
 class MessageController {
     async send(req, res, next) {
         try {
@@ -146,15 +152,23 @@ class MessageController {
             let user = jwt.verify(req.headers['authorization'], process.env.SECRET_KEY);
             let message = await messAccessor.find(ObjectId(req.body.msgId));
             let conversation = await convAccessor.find(message.conversation);
-            let messages = await messAccessor.findAllNotDeleted(conversation._id, user.email);
-            let trashId = ObjectId(req.body.trashFolderId);
+            
+            message.deletedBy.push(user.email);
+            await message.save();
 
-            if (!conversation.folders.includes(trashId)) {
-                conversation.folders.push(trashId);
+            let trashFolderId = ObjectId(req.body.trashFolderId);
+
+            if (!conversation.folders.has(trashFolderId)) {
+                conversation.folders.push(trashFolderId);
+                await conversation.save();
             }
 
-            if (messages.length == 1) {
-                let folder = await folderAccessor.find(ObjectId(req.body.currentFolderId));
+            let messages = await messAccessor.findAllNotDeleted(conversation._id, user.email);
+
+            if (messages.length == 0) {
+                // There is no not deleted message left in this conversation
+                let currentFolderId = ObjectId(req.body.currentFolderId);
+                let folder = await folderAccessor.find(currentFolderId);
 
                 if (folder.name != 'Drafts' && folder.name != 'Spam') {
                     let index = conversation.folders.indexOf(folder._id);
@@ -162,9 +176,6 @@ class MessageController {
                     await conversation.save();
                 }
             }
-
-            message.deletedBy.push(user.email);
-            await message.save();
 
             return res.status(200).json({
                 error: false,
@@ -185,21 +196,6 @@ class MessageController {
             let user = jwt.verify(req.headers['authorization'], process.env.SECRET_KEY);
             let message = await messAccessor.find(ObjectId(req.body.msgId));
             let conversation = await convAccessor.find(message.conversation);
-            let messages = await messAccessor.findAllDeleted(conversation._id, user.email);
-
-            if (messages.length == 1) {
-                // This happens because the deleted message is the last message in the conversation
-                if (conversation.folders.length > 1) {
-                    // Remove the reference from conversation to trash folder of user
-                    // Because this conversation still refers to other folders
-                    let index = conversation.folders.indexOf(ObjectId(req.body.trashFolderId));
-                    conversation.splice(index, 1);
-                    await conversation.save();
-                } else {
-                    // Delete conversation permanently because there is no reference left
-                    await convAccessor.delete(conversation._id);
-                }
-            }
 
             // Remove user from the visibleBy list of this message
             // So that this user can no longer see this message
@@ -207,10 +203,76 @@ class MessageController {
             message.visibleBy.splice(index, 1);
             
             if (message.visibleBy.length == 0) {
-                // If the message can't be visible from anyone, it should de deleted
+                // If the message cannot be visible from anyone, it should de deleted
                 await messAccessor.delete(message._id);
+            } else {
+                await message.save();
+            }
+
+            let messages = await messAccessor.findAllDeleted(conversation._id, user.email);
+
+            if (messages.length == 0) {
+                // There is no deleted message left in this conversation
+                if (conversation.folders.length > 1) {
+                    // Remove the reference from this conversation to the trash folder of user
+                    // Because this conversation still refers to other folders
+                    let trashFolderId = ObjectId(req.body.trashFolderId);
+                    
+                    for (let i = 0; i < conversation.folders.length; i++) {
+                        if (conversation.folders[i].equals(trashFolderId)) {
+                            conversation.folders.splice(i, 1);
+                            break;
+                        }
+                    }
+                    
+                    await conversation.save();
+                } else {
+                    // Delete conversation permanently because there is no reference left
+                    await convAccessor.delete(conversation._id);
+                }
             }
             
+            return res.status(200).json({
+                error: false,
+                message: null,
+                data: null
+            });
+        } catch (err) {
+            return res.status(500).json({
+                error: true,
+                message: err.message,
+                data: null
+            });
+        }
+    }
+
+    async restore(req, res, next) {
+        try {
+            let user = jwt.verify(req.headers['authorization'], process.env.SECRET_KEY);
+            let message = messAccessor.find(ObjectId(req.body.msgId));
+            let conversation = convAccessor.find(message.conversation);
+
+            let index = message.deletedBy.indexOf(user.email);
+            message.deletedBy.splice(index, 1);
+            await message.save();
+
+            let messages = await messAccessor.findAllDeleted(conversation._id, user.email);
+
+            if (messages.length == 0) {
+                // There is no deleted message left in this conversation
+                // Remove this conversation from trash folder
+                let trashFolderId = ObjectId(req.body.trashFolderId);
+                
+                for (let i = 0; i < conversation.folders.length; i++) {
+                    if (conversation.folders[i].equals(trashFolderId)) {
+                        conversation.folders.splice(i, 1);
+                        break;
+                    }
+                }
+
+                await conversation.save();
+            }
+
             return res.status(200).json({
                 error: false,
                 message: null,
@@ -270,8 +332,7 @@ class MessageController {
 
     async unmarkSpam(req, res, next) {
         try {
-            let user 
-            = jwt.verify(req.headers['authorization'], process.env.SECRET_KEY);
+            let user = jwt.verify(req.headers['authorization'], process.env.SECRET_KEY);
             let message = await messAccessor.find(ObjectId(req.body.msgId));
             let inboxFolder = ObjectId(req.body.inboxFolderId);
             let conversation = await convAccessor.find(message.conversation);
