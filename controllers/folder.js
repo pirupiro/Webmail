@@ -8,7 +8,7 @@ const ObjectId = require('mongoose').Types.ObjectId;
 class FolderController {
     async findAllConversations(req, res, next) {
         try {
-            let user = jwt.verify(req.headers['authorization'], process.env.SECRET_KEY);
+            let user = req.body.user
             let convs = await convAccessor.findAllByFolderId(ObjectId(req.body.folderId));
             let lastMessages = [];
 
@@ -47,7 +47,7 @@ class FolderController {
 
     async findAllMessages(req, res, next) {
         try {
-            let user = jwt.verify(req.headers['authorization'], process.env.SECRET_KEY);
+            let user = req.body.user
             let convs = await convAccessor.findAllByFolderId(ObjectId(req.body.folderId));
             let messages = await messAccessor.findAllNotDeleted(convs[0]._id, user.email);  // Drafts and Spam folder have only 1 conversation
             
@@ -67,7 +67,7 @@ class FolderController {
 
     async createFolder(req, res, next) {
         try {
-            let user = jwt.verify(req.headers['authorization'], process.env.SECRET_KEY);
+            let user = req.body.user
             let folders = await folderAccessor.findAllByUserId(user._id);
             let folderNames = folders.map(folder => folder.name.toLowerCase());
 

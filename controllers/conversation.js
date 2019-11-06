@@ -6,7 +6,7 @@ const ObjectId = require('mongoose').Types.ObjectId;
 class ConversationController {
     async findAllMessages(req, res, next) {
         try {
-            let user = jwt.verify(req.headers['authorization'], process.env.SECRET_KEY);
+            let user = req.body.user
             let messages;
 
             // Find all messages stored in a specific conversation and visible by user

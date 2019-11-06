@@ -22,7 +22,7 @@ Array.prototype.has = function(item) {
 class MessageController {
     async send(req, res, next) {
         try {
-            let user = jwt.verify(req.headers['authorization'], process.env.SECRET_KEY);
+            let user = req.body.user
             let allReceiverEmails = req.body.receiverEmails
                                     .concat(req.body.ccReceiverEmails)
                                     .concat(req.body.bccReceiverEmails);
@@ -68,7 +68,7 @@ class MessageController {
 
     async reply(req, res, next) {
         try {
-            let user = jwt.verify(req.headers['authorization'], process.env.SECRET_KEY);
+            let user = req.body.user
             let allReceiverEmails = req.body.receiverEmails
                                     .concat(req.body.ccReceiverEmails)
                                     .concat(req.body.bccReceiverEmails);
@@ -113,7 +113,7 @@ class MessageController {
 
     async saveToDrafts(req, res, next) {
         try {
-            let user = jwt.verify(req.headers['authorization'], process.env.SECRET_KEY);
+            let user = req.body.user
             let draftsId = ObjectId(req.body.draftsFolderId);
             let conversation = await convAccessor.findByFolderId(draftsId);
 
@@ -149,7 +149,7 @@ class MessageController {
 
     async delete(req, res, next) {
         try {
-            let user = jwt.verify(req.headers['authorization'], process.env.SECRET_KEY);
+            let user = req.body.user
             let message = await messAccessor.find(ObjectId(req.body.msgId));
             let conversation = await convAccessor.find(message.conversation);
             
@@ -193,7 +193,7 @@ class MessageController {
 
     async deletePermanently(req, res, next) {
         try {
-            let user = jwt.verify(req.headers['authorization'], process.env.SECRET_KEY);
+            let user = req.body.user
             let message = await messAccessor.find(ObjectId(req.body.msgId));
             let conversation = await convAccessor.find(message.conversation);
 
@@ -248,7 +248,7 @@ class MessageController {
 
     async restore(req, res, next) {
         try {
-            let user = jwt.verify(req.headers['authorization'], process.env.SECRET_KEY);
+            let user = req.body.user
             let message = messAccessor.find(ObjectId(req.body.msgId));
             let conversation = convAccessor.find(message.conversation);
 
@@ -289,7 +289,7 @@ class MessageController {
 
     async markRead(req, res, next) {
         try {
-            let user = jwt.verify(req.headers['authorization'], process.env.SECRET_KEY);
+            let user = req.body.user
             let message = await messAccessor.find(ObjectId(req.body.msgId));
             message.readBy.push(user.email);
             await message.save();
@@ -310,7 +310,7 @@ class MessageController {
 
     async markUnread(req, res, next) {
         try {
-            let user = jwt.verify(req.headers['authorization'], process.env.SECRET_KEY);
+            let user = req.body.user
             let message = await messAccessor.find(ObjectId(req.body.msgId));
             let index = message.readBy.indexOf(user.email);
             message.readBy.splice(index, 1);
@@ -332,7 +332,7 @@ class MessageController {
 
     async unmarkSpam(req, res, next) {
         try {
-            let user = jwt.verify(req.headers['authorization'], process.env.SECRET_KEY);
+            let user = req.body.user
             let message = await messAccessor.find(ObjectId(req.body.msgId));
             let inboxFolder = ObjectId(req.body.inboxFolderId);
             let conversation = await convAccessor.find(message.conversation);

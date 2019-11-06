@@ -75,7 +75,7 @@ class UserController {
 
             if (user) {
                 if (user.isBlocked) {
-                    return res.status(403).json({
+                    return res.status(200).json({
                         error: true,
                         message: 'Your account is blocked',
                         data: null
@@ -84,6 +84,9 @@ class UserController {
                     const payload = {
                         _id: user._id,
                         email: user.email,
+                        birthday: user.birthday,
+                        gender: user.gender,
+                        phone: user.phone,
                         name: user.name,
                         isAdmin: user.isAdmin
                     };
@@ -107,14 +110,14 @@ class UserController {
                         }
                     });
                 } else {
-                    return res.status(400).json({
+                    return res.status(200).json({
                         error: true,
                         message: 'Wrong password',
                         data: null
                     });
                 }
             } else {
-                return res.status(400).json({
+                return res.status(200).json({
                     error: true,
                     message: 'Account does not exist',
                     data: null
@@ -131,7 +134,7 @@ class UserController {
 
     async viewProfile(req, res, next) {
         try {
-            let user = jwt.verify(req.headers['authorization'], process.env.SECRET_KEY);
+            let user = req.body.user
             let userInfo = await userAccessor.findByEmail(user.email);
             let subset = ({ email, name, birthday, gender, phone }) => ({ email, name, birthday, gender, phone });
 
@@ -159,7 +162,7 @@ class UserController {
 
     async changeProfile(req, res, next) {
         try {
-            let user = jwt.verify(req.headers['authorization'], process.env.SECRET_KEY);
+            let user = req.body.user
 
             let userData = {
                 name: req.body.name,
@@ -203,7 +206,7 @@ class UserController {
     */
     async findAllUsers(req, res, next) {
         try {
-            let user = jwt.verify(req.headers['authorization'], process.env.SECRET_KEY);
+            let user = req.body.user
 
             if (user.isAdmin) {
                 let users = await userAccessor.findAll();
@@ -231,7 +234,7 @@ class UserController {
 
     async blockUser(req, res, next) {
         try {
-            let user = jwt.verify(req.headers['authorization'], process.env.SECRET_KEY);
+            let user = req.body.user
 
             if (user.isAdmin) {
                 await userAccessor.block(req.body.email);
@@ -259,7 +262,7 @@ class UserController {
 
     async unblockUser(req, res, next) {
         try {
-            let user = jwt.verify(req.headers['authorization'], process.env.SECRET_KEY);
+            let user = req.body.user
 
             if (user.isAdmin) {
                 await userAccessor.unblock(req.body.email);
