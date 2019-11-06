@@ -17,7 +17,6 @@ class UserController {
                 birthday: req.body.birthday,
                 gender: req.body.gender,
                 phone: req.body.phone,
-                isAdmin: req.body.isAdmin
             };
             
             let queryUser = await userAccessor.findByEmail(userData.email);
@@ -94,13 +93,17 @@ class UserController {
                     });
 
                     let folders = await folderAccessor.findAllByUserId(user._id);
+                    let subsetFolders = folders.map(folder => ({
+                        _id: folder._id,
+                        name: folder.name
+                    }));
     
                     return res.status(200).send({
                         error: false,
                         message: null,
                         data: {
                             token: token,
-                            folders: folders
+                            folders: subsetFolders
                         }
                     });
                 } else {

@@ -3,6 +3,15 @@ const userAccessor = require('../accessors/user');
 const folderAccessor = require('../accessors/folder');
 const convAccessor = require('../accessors/conversation');
 const messAccessor = require('../accessors/message');
+const ObjectId = require('mongoose').Types.ObjectId;
+
+Array.prototype.diff = function(array) {
+    return this.filter(element1 => {
+        return array.every(element2 => {
+            return !element1.equals(element2);
+        });
+    });
+};
 
 class MessageController {
     async send(req, res, next) {
@@ -11,11 +20,12 @@ class MessageController {
             let allReceiverEmails = req.body.receiverEmails
                                     .concat(req.body.ccReceiverEmails)
                                     .concat(req.body.bccReceiverEmails);
+
             let allReceivers = await userAccessor.findAllByEmails(allReceiverEmails);
             let allReceiverIds = allReceivers.map(receiver => receiver._id);
             let inboxFolders = await folderAccessor.findAllInbox(allReceiverIds);
-            let folders = inboxFolders.concat(req.body.sentFolderId);
-            let folderIds = folders.map(folder => folder._id);
+            let folderIds = inboxFolders.map(folder => folder._id);
+            folderIds.push(ObjectId(req.body.sentFolderId));
             const convData = {
                 folders: folderIds
             };
@@ -53,7 +63,9 @@ class MessageController {
     async reply(req, res, next) {
         try {
             let user = jwt.verify(req.headers['authorization'], process.env.SECRET_KEY);
-            let allReceiverEmails = req.body.receiverEmails.concat(req.body.ccReceiverEmails).concat(req.body.bccReceiverEmails);
+            let allReceiverEmails = req.body.receiverEmails
+                                    .concat(req.body.ccReceiverEmails)
+                                    .concat(req.body.bccReceiverEmails);
 
             const replyingMessage = {
                 title: req.body.title,
@@ -62,16 +74,20 @@ class MessageController {
                 receivers: req.body.receiverEmails,
                 ccReceivers: req.body.ccReceiverEmails,
                 bccReceivers: req.body.bccReceiverEmails,
-                conversation: req.body.convId,  // Conversation id of the replied message
                 visibleBy: allReceiverEmails.concat(user.email),
-                replyTo: req.body.msgId,  // Id of the replied message
+                readBy: [user.email],
+                conversation: ObjectId(req.body.convId),  // Conversation id of the replied message
+                replyTo: ObjectId(req.body.msgId),  // Id of the replied message
                 files: req.body.files
             };
 
-            let inboxFolders = await folderAccessor.findAllByEmails(allReceiverEmails);
-            let conversation = await convAccessor.find(req.body.convId);
+            let allReceivers = await userAccessor.findAllByEmails(allReceiverEmails);
+            let allReceiverIds = allReceivers.map(receiver => receiver._id);
+            let inboxFolders = await folderAccessor.findAllInbox(allReceiverIds);
             let inboxFolderIds = inboxFolders.map(folder => folder._id);
-            conversation.folders = Array.from(new Set(conversation.folders.concat(inboxFolderIds)));
+            let conversation = await convAccessor.find(ObjectId(req.body.convId));
+            let difference = inboxFolderIds.diff(conversation.folders);
+            conversation.folders = conversation.folders.concat(difference);
             await conversation.save();
             await messAccessor.insert(replyingMessage);
 
@@ -92,8 +108,8 @@ class MessageController {
     async saveToDrafts(req, res, next) {
         try {
             let user = jwt.verify(req.headers['authorization'], process.env.SECRET_KEY);
-            let drafts = await folderAccessor.findDrafts(user._id);
-            let conversation = await convAccessor.findByFolderId(drafts._id);
+            let draftsId = ObjectId(req.body.draftsFolderId);
+            let conversation = await convAccessor.findByFolderId(draftsId);
 
             const messageData = {
                 title: req.body.title,
@@ -104,6 +120,7 @@ class MessageController {
                 bccReceivers: req.body.bccReceiverEmails,
                 conversation: conversation._id,
                 visibleBy: [user.email],
+                readBy: [user.email],
                 files: req.body.files,
                 sentAt: null
             };
@@ -127,17 +144,17 @@ class MessageController {
     async delete(req, res, next) {
         try {
             let user = jwt.verify(req.headers['authorization'], process.env.SECRET_KEY);
-            let message = await messAccessor.find(req.body.msgId);
+            let message = await messAccessor.find(ObjectId(req.body.msgId));
             let conversation = await convAccessor.find(message.conversation);
             let messages = await messAccessor.findAllNotDeleted(conversation._id, user.email);
-            let trashFolder = await folderAccessor.findTrash(user._id);
+            let trashId = ObjectId(req.body.trashFolderId);
 
-            if (!conversation.folderds.includes(trashFolder._id)) {
-                conversation.folders.push(trashFolder._id);
+            if (!conversation.folders.includes(trashId)) {
+                conversation.folders.push(trashId);
             }
 
             if (messages.length == 1) {
-                let folder = await folderAccessor.find(req.body.currentFolderId);
+                let folder = await folderAccessor.find(ObjectId(req.body.currentFolderId));
 
                 if (folder.name != 'Drafts' && folder.name != 'Spam') {
                     let index = conversation.folders.indexOf(folder._id);
@@ -166,7 +183,7 @@ class MessageController {
     async deletePermanently(req, res, next) {
         try {
             let user = jwt.verify(req.headers['authorization'], process.env.SECRET_KEY);
-            let message = await messAccessor.find(req.body.msgId);
+            let message = await messAccessor.find(ObjectId(req.body.msgId));
             let conversation = await convAccessor.find(message.conversation);
             let messages = await messAccessor.findAllDeleted(conversation._id, user.email);
 
@@ -175,7 +192,7 @@ class MessageController {
                 if (conversation.folders.length > 1) {
                     // Remove the reference from conversation to trash folder of user
                     // Because this conversation still refers to other folders
-                    let index = conversation.folders.indexOf(req.body.trashFolderId);
+                    let index = conversation.folders.indexOf(ObjectId(req.body.trashFolderId));
                     conversation.splice(index, 1);
                     await conversation.save();
                 } else {
@@ -211,7 +228,7 @@ class MessageController {
     async markRead(req, res, next) {
         try {
             let user = jwt.verify(req.headers['authorization'], process.env.SECRET_KEY);
-            let message = await messAccessor.find(req.body.msgId);
+            let message = await messAccessor.find(ObjectId(req.body.msgId));
             message.readBy.push(user.email);
             await message.save();
             
@@ -232,7 +249,7 @@ class MessageController {
     async markUnread(req, res, next) {
         try {
             let user = jwt.verify(req.headers['authorization'], process.env.SECRET_KEY);
-            let message = await messAccessor.find(req.body.msgId);
+            let message = await messAccessor.find(ObjectId(req.body.msgId));
             let index = message.readBy.indexOf(user.email);
             message.readBy.splice(index, 1);
             await message.save();
@@ -253,11 +270,12 @@ class MessageController {
 
     async unmarkSpam(req, res, next) {
         try {
-            let user  = jwt.verify(req.headers['authorization'], process.env.SECRET_KEY);
-            let message = await messAccessor.find(req.body.msgId);
-            let inboxFolder = await folderAccessor.findInbox(user._id);
+            let user 
+            = jwt.verify(req.headers['authorization'], process.env.SECRET_KEY);
+            let message = await messAccessor.find(ObjectId(req.body.msgId));
+            let inboxFolder = ObjectId(req.body.inboxFolderId);
             let conversation = await convAccessor.find(message.conversation);
-            let index = conversation.folders.indexOf(req.body.convId);
+            let index = conversation.folders.indexOf(ObjectId(req.body.convId));
             conversation.folders[index] = inboxFolder._id;
             await conversation.save();
             

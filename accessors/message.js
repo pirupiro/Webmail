@@ -44,7 +44,7 @@ class MessageAccessor {
             conversation: convId,
             visibleBy: userEmail,
             deletedBy: {
-                $not: userEmail
+                $ne: userEmail
             }
         });
     }
