@@ -36,8 +36,7 @@ class UserAccessor {
     }
 
     updateByEmail(email, user) {
-        // return userModel.findByIdAndUpdate(id, user, { new: true });
-        return userModel.updateOne({
+        return userModel.findOneAndUpdate({
             email: email
         }, user, {
             new: true

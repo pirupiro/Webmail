@@ -170,7 +170,8 @@ class UserController {
 
             if (req.body.changePassword) {
                 if (req.body.newPassword == req.body.reNewPassword) {
-                    userData.password = req.body.newPassword;
+                    let encrypted = await bcrypt.hash(req.body.newPassword, 10);
+                    userData.password = encrypted;
                 } else {
                     return res.status(400).json({
                         error: true,
@@ -181,8 +182,8 @@ class UserController {
             }
 
             let updatedUser = await userAccessor.updateByEmail(user.email, userData);
-            let subset = ({ password, name, birthday, gender, phone}) => ({ password, name, birthday, gender, phone });
-
+            let subset = ({ name, birthday, gender, phone }) => ({ name, birthday, gender, phone });
+            
             return res.status(200).json({
                 error: false,
                 message: 'Profile changed successfully',
@@ -238,7 +239,7 @@ class UserController {
 
                 return res.status(200).json({
                     error: false,
-                    message: 'User blocked successfully',
+                    message: req.body.email + ' account is blocked',
                     data: null
                 });
             } else {
@@ -266,7 +267,7 @@ class UserController {
 
                 return res.status(200).json({
                     error: false,
-                    message: 'User unblocked successfully',
+                    message: req.body.email + ' account unblocked',
                     data: null
                 });
             } else {

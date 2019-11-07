@@ -18,7 +18,6 @@ class FolderController {
             }
 
             let messages = await Promise.all(lastMessages);
-            let senderEmails = messages.map(message => message[0].sender);
             let data = [];
 
             for (let i = 0; i < convs.length; i++) {
@@ -26,7 +25,7 @@ class FolderController {
                     convId: convs[i]._id,
                     title: messages[i][0].title,
                     content: messages[i][0].content,
-                    sender: senderEmails[i],
+                    sender: messages[i][0].sender,
                     sentAt: messages[i][0].sentAt
                 });
             }
@@ -97,13 +96,19 @@ class FolderController {
 
     async deleteFolder(req, res, next) {
         try {
-            let convs = await convAccessor.findAllByFolderId(ObjectId(req.body.folderId));
+            let folderId = ObjectId(req.body.folderId);
+            let convs = await convAccessor.findAllByFolderId(folderId);
 
             for (let i = 0; i < convs.length; i++) {
                 if (convs[i].folders.length > 1) {
                     // Remove the reference between conversations and their folder
-                    let index = convs[i].folders.indexOf(folderId);
-                    convs[i].folders.splice(index, 1);
+                    for (let j = 0; j < convs[i].folders.length; j++) {
+                        if (convs[i].folders[j].equals(folderId)) {
+                            convs[i].folders[j].splice(j, 1);
+                            break;
+                        }
+                    }
+
                     await convs[i].save();
                 } else {
                     // Permanently deletes conversations
