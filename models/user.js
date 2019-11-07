@@ -18,10 +18,6 @@ const userSchema = new mongoose.Schema({
     birthday: Date,
     gender: String,
     phone: String,
-    createdAt: {
-        type: Date,
-        default: Date.now
-    },
     isBlocked: {
         type: Boolean,
         default: false
