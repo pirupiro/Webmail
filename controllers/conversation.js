@@ -1,4 +1,3 @@
-const jwt = require('jsonwebtoken');
 const convAccessor = require('../accessors/conversation');
 const messAccessor = require('../accessors/message');
 const ObjectId = require('mongoose').Types.ObjectId;
@@ -94,17 +93,6 @@ class ConversationController {
 
     async move(req, res, next) {
         try {
-            // let unallowed = ['trash', 'drafts', 'spam'];
-
-            // if (unallowed.includes(req.body.srcFolderName.toLowerCase())
-            //     || unallowed.includes(req.body.desFolderName.toLowerCase())) {
-            //     return res.status(400).json({
-            //         error: true,
-            //         message: 'The source or destination folder is invalid',
-            //         data: null
-            //     });
-            // }
-
             let convIds = req.body.convIds.map(ObjectId);
             let convs = await convAccessor.findAllByIds(convIds);
 

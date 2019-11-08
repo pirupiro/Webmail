@@ -56,6 +56,16 @@ class MessageAccessor {
             deletedBy: userEmail
         });
     }
+
+    countUnread(convId, userEmail) {
+        return messageModel.countDocuments({
+            conversation: convId,
+            visibleBy: userEmail,
+            readBy: {
+                $ne: userEmail
+            }
+        });
+    }
 }
 
 module.exports = new MessageAccessor();

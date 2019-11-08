@@ -1,5 +1,3 @@
-const jwt = require('jsonwebtoken');
-const userAccessor = require('../accessors/user');
 const folderAccessor = require('../accessors/folder');
 const convAccessor = require('../accessors/conversation');
 const messAccessor = require('../accessors/message');
@@ -11,13 +9,16 @@ class FolderController {
             let user = req.body.user
             let convs = await convAccessor.findAllByFolderId(ObjectId(req.body.folderId));
             let lastMessages = [];
+            let unread = [];
 
             for (let i = 0; i < convs.length; i++) {
                 // Find all last messages stored in each conversation and visible by user
                 lastMessages.push(messAccessor.findLast(convs[i]._id, user.email));
+                unread.push(messAccessor.countUnread(convs[i]._id, user.email));
             }
 
             let messages = await Promise.all(lastMessages);
+            let counts = await Promise.all(unread);
             let data = [];
 
             for (let i = 0; i < convs.length; i++) {
@@ -26,7 +27,8 @@ class FolderController {
                     title: messages[i][0].title,
                     content: messages[i][0].content,
                     sender: messages[i][0].sender,
-                    sentAt: messages[i][0].sentAt
+                    sentAt: messages[i][0].sentAt,
+                    numUnread: counts[i]
                 });
             }
 

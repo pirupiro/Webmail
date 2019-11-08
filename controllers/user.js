@@ -1,5 +1,4 @@
 const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
 const userAccessor = require('../accessors/user');
 const folderAccessor = require('../accessors/folder');
 const convAccessor = require('../accessors/conversation');
@@ -54,7 +53,7 @@ class UserController {
                     data: null
                 });
             } else {
-                return res.status(400).json({
+                return res.status(200).json({
                     error: true,
                     message: 'Account has already existed',
                     data: null
@@ -81,19 +80,15 @@ class UserController {
                         data: null
                     });
                 } else if (bcrypt.compareSync(req.body.password, user.password)) {
-                    const payload = {
+                    const userData = {
                         _id: user._id,
                         email: user.email,
+                        name: user.name,
                         birthday: user.birthday,
                         gender: user.gender,
                         phone: user.phone,
-                        name: user.name,
                         isAdmin: user.isAdmin
                     };
-
-                    let token = jwt.sign(payload, process.env.SECRET_KEY, {
-                        expiresIn: 1800
-                    });
 
                     let folders = await folderAccessor.findAllByUserId(user._id);
                     let subsetFolders = folders.map(folder => ({
@@ -101,11 +96,11 @@ class UserController {
                         name: folder.name
                     }));
     
-                    return res.status(200).send({
+                    return res.status(200).json({
                         error: false,
                         message: null,
                         data: {
-                            token: token,
+                            user: userData,
                             folders: subsetFolders
                         }
                     });
@@ -176,7 +171,7 @@ class UserController {
                     let encrypted = await bcrypt.hash(req.body.newPassword, 10);
                     userData.password = encrypted;
                 } else {
-                    return res.status(400).json({
+                    return res.status(200).json({
                         error: true,
                         message: 'Password mismatch',
                         data: null

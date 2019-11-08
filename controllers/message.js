@@ -1,4 +1,3 @@
-const jwt = require('jsonwebtoken');
 const userAccessor = require('../accessors/user');
 const folderAccessor = require('../accessors/folder');
 const convAccessor = require('../accessors/conversation');
