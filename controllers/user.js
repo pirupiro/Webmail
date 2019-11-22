@@ -16,9 +16,9 @@ class UserController {
                     error: true,
                     message: 'Email is invalid',
                     data: null
-                });              
+                });
             }
-            
+
             const userData = {
                 email: req.body.email,
                 password: req.body.password,
@@ -32,14 +32,7 @@ class UserController {
                 // Hash password before saving to database
                 userData.password = await bcrypt.hash(userData.password, 10);
                 let user = await userAccessor.insert(userData);
-<<<<<<< HEAD
-                await folderAccessor.insert(user._id, 'Inbox');
-                await folderAccessor.insert(user._id, 'Sent');
-                await folderAccessor.insert(user._id, 'Trash');
-                let drafts = await folderAccessor.insert(user._id, 'Drafts');
-                let spam = await folderAccessor.insert(user._id, 'Spam');
-=======
-                
+
                 let folders = await Promise.all([
                     folderAccessor.insert(user._id, 'Inbox'),
                     folderAccessor.insert(user._id, 'Sent'),
@@ -47,7 +40,6 @@ class UserController {
                     folderAccessor.insert(user._id, 'Spam'),
                     folderAccessor.insert(user._id, 'Drafts')
                 ]);
->>>>>>> e7171b854f20c85a980e6a03255ce935012df2e3
 
                 const draftsConv = {
                     folders: [folders[4]._id]  // Drafts folder
@@ -61,11 +53,7 @@ class UserController {
                     data: null
                 });
             } else {
-<<<<<<< HEAD
-                return res.status(400).json({
-=======
                 return res.status(200).json({
->>>>>>> e7171b854f20c85a980e6a03255ce935012df2e3
                     error: true,
                     message: 'Account has already existed',
                     data: null
@@ -108,7 +96,7 @@ class UserController {
                         _id: folder._id,
                         name: folder.name
                     }));
-    
+
                     return res.status(200).json({
                         error: false,
                         message: null,
@@ -165,7 +153,7 @@ class UserController {
 
             let updatedUser = await userAccessor.updateByEmail(user.email, userData);
             let subset = ({ name, birthday, gender, phone }) => ({ name, birthday, gender, phone });
-            
+
             return res.status(200).json({
                 error: false,
                 message: 'Profile changed successfully',
@@ -209,7 +197,7 @@ class UserController {
                 error: true,
                 message: err.message,
                 data: null
-            }); 
+            });
         }
     }
 
@@ -237,7 +225,7 @@ class UserController {
                 error: true,
                 message: err.message,
                 data: null
-            }); 
+            });
         }
     }
 
@@ -265,7 +253,7 @@ class UserController {
                 error: true,
                 message: err.message,
                 data: null
-            }); 
+            });
         }
     }
 }
