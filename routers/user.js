@@ -4,8 +4,7 @@ const userController = require('../controllers/user');
 
 userRouter.post('/register', userController.register);
 userRouter.post('/login', userController.login);
-userRouter.get('/profile', userController.viewProfile);
-userRouter.post('/profile', userController.changeProfile);
+userRouter.post('/profile', userController.editProfile);
 userRouter.get('/', userController.findAllUsers);
 userRouter.put('/block', userController.blockUser);
 userRouter.put('/unblock', userController.unblockUser);

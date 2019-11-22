@@ -21,19 +21,29 @@ Array.prototype.has = function(item) {
 class MessageController {
     async send(req, res, next) {
         try {
-            let user = req.body.user
+            let user = req.body.user;
             let allReceiverEmails = req.body.receiverEmails
                                     .concat(req.body.ccReceiverEmails)
                                     .concat(req.body.bccReceiverEmails);
 
             let allReceivers = await userAccessor.findAllByEmails(allReceiverEmails);
             let allReceiverIds = allReceivers.map(receiver => receiver._id);
-            let inboxFolders = await folderAccessor.findAllInbox(allReceiverIds);
-            let folderIds = inboxFolders.map(folder => folder._id);
+            let folders;
+            let isSpam = false;  // This will be replaced by calling spam filter API
+
+            if (isSpam) {
+                folders = await folderAccessor.findAllSpam(allReceiverIds);
+            } else {
+                folders = await folderAccessor.findAllInbox(allReceiverIds);
+            }
+            
+            let folderIds = folders.map(folder => folder._id);
             folderIds.push(ObjectId(req.body.sentFolderId));
+
             const convData = {
                 folders: folderIds
             };
+
             let conversation = await convAccessor.insert(convData);
 
             const messageData = {
@@ -67,7 +77,7 @@ class MessageController {
 
     async reply(req, res, next) {
         try {
-            let user = req.body.user
+            let user = req.body.user;
             let allReceiverEmails = req.body.receiverEmails
                                     .concat(req.body.ccReceiverEmails)
                                     .concat(req.body.bccReceiverEmails);
@@ -99,7 +109,7 @@ class MessageController {
             return res.status(200).json({
                 error: false,
                 message: null,
-                data: null
+                data: replyingMessage
             });
         } catch (err) {
             return res.status(500).json({
@@ -112,7 +122,7 @@ class MessageController {
 
     async saveToDrafts(req, res, next) {
         try {
-            let user = req.body.user
+            let user = req.body.user;
             let draftsId = ObjectId(req.body.draftsFolderId);
             let conversation = await convAccessor.findByFolderId(draftsId);
 
@@ -130,7 +140,7 @@ class MessageController {
                 sentAt: null
             };
 
-            await messAccessor.create(messageData);
+            await messAccessor.insert(messageData);
             
             return res.status(200).json({
                 error: false,
@@ -148,7 +158,7 @@ class MessageController {
 
     async delete(req, res, next) {
         try {
-            let user = req.body.user
+            let user = req.body.user;
             let message = await messAccessor.find(ObjectId(req.body.msgId));
             let conversation = await convAccessor.find(message.conversation);
             
@@ -169,7 +179,7 @@ class MessageController {
                 let currentFolderId = ObjectId(req.body.currentFolderId);
                 let folder = await folderAccessor.find(currentFolderId);
 
-                if (folder.name != 'Drafts' && folder.name != 'Spam') {
+                if (folder.name != 'Drafts') {
                     let index = conversation.folders.indexOf(folder._id);
                     conversation.folders.splice(index, 1);
                     await conversation.save();
@@ -192,7 +202,7 @@ class MessageController {
 
     async deletePermanently(req, res, next) {
         try {
-            let user = req.body.user
+            let user = req.body.user;
             let message = await messAccessor.find(ObjectId(req.body.msgId));
             let conversation = await convAccessor.find(message.conversation);
 
@@ -247,10 +257,9 @@ class MessageController {
 
     async restore(req, res, next) {
         try {
-            let user = req.body.user
+            let user = req.body.user;
             let message = messAccessor.find(ObjectId(req.body.msgId));
             let conversation = convAccessor.find(message.conversation);
-
             let index = message.deletedBy.indexOf(user.email);
             message.deletedBy.splice(index, 1);
             await message.save();
@@ -261,14 +270,8 @@ class MessageController {
                 // There is no deleted message left in this conversation
                 // Remove this conversation from trash folder
                 let trashFolderId = ObjectId(req.body.trashFolderId);
-                
-                for (let i = 0; i < conversation.folders.length; i++) {
-                    if (conversation.folders[i].equals(trashFolderId)) {
-                        conversation.folders.splice(i, 1);
-                        break;
-                    }
-                }
-
+                let index = conversation.folders.indexOf(trashFolderId);
+                conversation.folders.splice(index, 1);
                 await conversation.save();
             }
 
@@ -288,7 +291,7 @@ class MessageController {
 
     async markRead(req, res, next) {
         try {
-            let user = req.body.user
+            let user = req.body.user;
             let message = await messAccessor.find(ObjectId(req.body.msgId));
             message.readBy.push(user.email);
             await message.save();
@@ -309,7 +312,7 @@ class MessageController {
 
     async markUnread(req, res, next) {
         try {
-            let user = req.body.user
+            let user = req.body.user;
             let message = await messAccessor.find(ObjectId(req.body.msgId));
             let index = message.readBy.indexOf(user.email);
             message.readBy.splice(index, 1);
@@ -331,7 +334,7 @@ class MessageController {
 
     async unmarkSpam(req, res, next) {
         try {
-            let user = req.body.user
+            let user = req.body.user;
             let message = await messAccessor.find(ObjectId(req.body.msgId));
             let inboxFolder = ObjectId(req.body.inboxFolderId);
             let conversation = await convAccessor.find(message.conversation);

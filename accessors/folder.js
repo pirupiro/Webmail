@@ -52,6 +52,10 @@ class FolderAccessor {
         return this.findAllByName(userIds, 'Inbox');
     }
 
+    findAllSpam(userIds) {
+        return this.findAllByName(userids, 'Spam');
+    }
+
     delete(folderId) {
         return folderModel.findByIdAndDelete(folderId);
     }
