@@ -44,7 +44,7 @@ class MessageAccessor {
             conversation: convId,
             visibleBy: userEmail,
             deletedBy: {
-                $not: userEmail
+                $ne: userEmail
             }
         });
     }
@@ -54,6 +54,16 @@ class MessageAccessor {
             conversation: convId,
             visibleBy: userEmail,
             deletedBy: userEmail
+        });
+    }
+
+    countUnread(convId, userEmail) {
+        return messageModel.countDocuments({
+            conversation: convId,
+            visibleBy: userEmail,
+            readBy: {
+                $ne: userEmail
+            }
         });
     }
 }

@@ -36,8 +36,7 @@ class UserAccessor {
     }
 
     updateByEmail(email, user) {
-        // return userModel.findByIdAndUpdate(id, user, { new: true });
-        return userModel.updateOne({
+        return userModel.findOneAndUpdate({
             email: email
         }, user, {
             new: true
@@ -48,7 +47,15 @@ class UserAccessor {
         return userModel.updateOne({
             email: email
         }, {
-            isBlocked: !isBlocked
+            isBlocked: true
+        });
+    }
+
+    unblock(email) {
+        return userModel.updateOne({
+            email: email
+        }, {
+            isBlocked: false
         });
     }
 }

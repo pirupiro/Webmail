@@ -18,10 +18,11 @@ const userSchema = new mongoose.Schema({
     birthday: Date,
     gender: String,
     phone: String,
-    createdAt: {
-        type: Date,
-        default: Date.now
+    isBlocked: {
+        type: Boolean,
+        default: false
     },
+<<<<<<< HEAD
     isBlocked:{
         type: Boolean,
         default: false
@@ -30,6 +31,12 @@ const userSchema = new mongoose.Schema({
         type: Boolean,
         default: false
     },
+=======
+    isAdmin: {
+        type: Boolean,
+        default: false
+    }
+>>>>>>> e7171b854f20c85a980e6a03255ce935012df2e3
 });
 
 module.exports = mongoose.model('User', userSchema);

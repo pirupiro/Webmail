@@ -1,60 +1,41 @@
-const jwt = require('jsonwebtoken');
-const userAccessor = require('../accessors/user');
 const folderAccessor = require('../accessors/folder');
 const convAccessor = require('../accessors/conversation');
 const messAccessor = require('../accessors/message');
+const ObjectId = require('mongoose').Types.ObjectId;
 
 class FolderController {
     async findAllConversations(req, res, next) {
         try {
-            let user = jwt.verify(req.headers['authorization'], process.env.SECRET_KEY);
-            let convs = await convAccessor.findAllByFolderId(req.body.folderId);
+            let user = req.body.user
+            let convs = await convAccessor.findAllByFolderId(ObjectId(req.body.folderId));
             let lastMessages = [];
+            let unread = [];
 
             for (let i = 0; i < convs.length; i++) {
-                // Find all messages stored in convs[i] and visible by user
+                // Find all last messages stored in each conversation and visible by user
                 lastMessages.push(messAccessor.findLast(convs[i]._id, user.email));
+                unread.push(messAccessor.countUnread(convs[i]._id, user.email));
             }
 
-            Promise
-            .all(lastMessages)
-            .then(values => {
-                let lastMessages = [];
+            let messages = await Promise.all(lastMessages);
+            let counts = await Promise.all(unread);
+            let data = [];
 
-                for (let i = 0; i < values.length; i++) {
-                    lastMessages = lastMessages.concat(values[i]);
-                }
-
-                let senderIds = lastMessages.map(message => message.sender);
-
-                userAccessor
-                .findAllByIds(senderIds)
-                .then(senders => {
-                    let data = [];
-
-                    for (let i = 0; i < lastMessages.length; i++) {
-                        data.push({
-                            convId: convs[i]._id,
-                            title: lastMessages[i].title,
-                            content: lastMessages[i].content,
-                            sender: senders[i].name,
-                            sentAt: lastMessages[i].sentAt
-                        });
-                    }
-
-                    return res.status(200).json({
-                        error: false,
-                        message: null,
-                        data: data
-                    });
+            for (let i = 0; i < convs.length; i++) {
+                data.push({
+                    convId: convs[i]._id,
+                    title: messages[i][0].title,
+                    content: messages[i][0].content,
+                    sender: messages[i][0].sender,
+                    sentAt: messages[i][0].sentAt,
+                    numUnread: counts[i]
                 });
-            })
-            .catch(err => {
-                return res.status(500).json({
-                    error: true,
-                    message: err.message,
-                    data: null
-                });
+            }
+
+            return res.status(200).json({
+                error: false,
+                message: null,
+                data: data
             });
         } catch (err) {
             return res.status(500).json({
@@ -67,8 +48,8 @@ class FolderController {
 
     async findAllMessages(req, res, next) {
         try {
-            let user = jwt.verify(req.headers['authorization'], process.env.SECRET_KEY);
-            let convs = await convAccessor.findAllByFolderId(req.body.folderId);
+            let user = req.body.user
+            let convs = await convAccessor.findAllByFolderId(ObjectId(req.body.folderId));
             let messages = await messAccessor.findAllNotDeleted(convs[0]._id, user.email);  // Drafts and Spam folder have only 1 conversation
             
             return res.status(200).json({
@@ -87,7 +68,7 @@ class FolderController {
 
     async createFolder(req, res, next) {
         try {
-            let user = jwt.verify(req.headers['authorization'], process.env.SECRET_KEY);
+            let user = req.body.user
             let folders = await folderAccessor.findAllByUserId(user._id);
             let folderNames = folders.map(folder => folder.name.toLowerCase());
 
@@ -117,13 +98,19 @@ class FolderController {
 
     async deleteFolder(req, res, next) {
         try {
-            let convs = await convAccessor.findAllByFolderId(req.body.folderId);
+            let folderId = ObjectId(req.body.folderId);
+            let convs = await convAccessor.findAllByFolderId(folderId);
 
             for (let i = 0; i < convs.length; i++) {
                 if (convs[i].folders.length > 1) {
                     // Remove the reference between conversations and their folder
-                    let index = convs[i].folders.indexOf(folderId);
-                    convs[i].folders.splice(index, 1);
+                    for (let j = 0; j < convs[i].folders.length; j++) {
+                        if (convs[i].folders[j].equals(folderId)) {
+                            convs[i].folders[j].splice(j, 1);
+                            break;
+                        }
+                    }
+
                     await convs[i].save();
                 } else {
                     // Permanently deletes conversations

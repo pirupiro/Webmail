@@ -12,7 +12,10 @@ const messageSchema = new mongoose.Schema({
     readBy: [String],
     deletedBy: [String],
     conversation: ObjectId,
-    replyTo: ObjectId,
+    replyTo: {
+        type: ObjectId,
+        default: null
+    },
     files: [String],
     sentAt: {
         type: Date,
