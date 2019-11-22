@@ -179,11 +179,16 @@ class UserController {
             if (user.isAdmin) {
                 let users = await userAccessor.findAll();
                 let subset = ({ email, name, birthday, gender, phone, isBlocked }) => ({ email, name, birthday, gender, phone, isBlocked });
+                let _users = [];
+
+                for (user of users) {
+                    _users.push(subset(user));
+                }
 
                 return res.status(200).json({
                     error: false,
                     message: null,
-                    data: subset(users)
+                    data: _users
                 });
             } else {
                 return res.status(401).json({
