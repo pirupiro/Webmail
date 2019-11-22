@@ -22,8 +22,14 @@ const userSchema = new mongoose.Schema({
         type: Date,
         default: Date.now
     },
-    isBlocked: Boolean,
-    isAdmin: Boolean
+    isBlocked:{
+        type: Boolean,
+        default: false
+    },
+    isAdmin: {
+        type: Boolean,
+        default: false
+    },
 });
 
 module.exports = mongoose.model('User', userSchema);

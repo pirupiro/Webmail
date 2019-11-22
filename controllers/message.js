@@ -48,7 +48,8 @@ class MessageController {
                 data: message
             });
         } catch (err) {
-            return res.status(500).json({
+            console.log(err)
+            return res.status(400).json({
                 error: true,
                 message: err.message,
                 data: null
